@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>FinSight — Financial Analysis Terminal</title>
+<title>Kruchten Finance — Financial Analysis Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -17,8 +17,8 @@
     --accent2: #0099ff;
     --accent-dim: rgba(0,229,180,0.08);
     --text: #dce6f0;
-    --muted: #4a5878;
-    --muted2: #7a8aaa;
+    --muted: #6a7a9a;
+    --muted2: #9aaac4;
     --positive: #00c97e;
     --negative: #ff4d6a;
     --warning: #ffb300;
@@ -684,7 +684,7 @@
 <header>
   <div class="logo">
     <div class="logo-dot"></div>
-    Fin<span>Sight</span>
+    Kruchten<span> Finance</span>
   </div>
   <div class="search-form">
     <div class="input-group">
@@ -806,7 +806,7 @@
 </main>
 
 <footer>
-  FinSight — Data via Alpha Vantage. For informational purposes only. Not financial advice.
+  Kruchten Finance — Data via Alpha Vantage. For informational purposes only. Not financial advice.
 </footer>
 
 <script>
@@ -966,28 +966,90 @@ async function avGet(params) {
   return data;
 }
 
-// Sector → suggested peer tickers (used when no peers endpoint available)
-const SECTOR_PEERS = {
-  'Technology':             { 'AAPL':['MSFT','GOOGL','META'], 'MSFT':['AAPL','GOOGL','ORCL'], 'GOOGL':['META','MSFT','AAPL'], 'META':['GOOGL','SNAP','PINS'], 'NVDA':['AMD','INTC','QCOM'], 'AMD':['NVDA','INTC','QCOM'], 'ORCL':['SAP','CRM','MSFT'], 'CRM':['ORCL','NOW','MSFT'], '_default':['AAPL','MSFT','GOOGL'] },
-  'Health Care':            { '_default':['JNJ','PFE','UNH'] },
-  'Healthcare':             { '_default':['JNJ','PFE','UNH'] },
-  'Financials':             { 'JPM':['BAC','WFC','GS'], 'BAC':['JPM','WFC','C'], '_default':['JPM','BAC','WFC'] },
-  'Consumer Discretionary': { 'AMZN':['WMT','TGT','COST'], '_default':['AMZN','HD','MCD'] },
-  'Consumer Staples':       { '_default':['PG','KO','PEP'] },
-  'Energy':                 { '_default':['XOM','CVX','COP'] },
-  'Industrials':            { '_default':['HON','GE','CAT'] },
-  'Communication Services': { '_default':['GOOGL','META','DIS'] },
-  'Utilities':              { '_default':['NEE','DUK','SO'] },
-  'Real Estate':            { '_default':['AMT','PLD','CCI'] },
-  'Materials':              { '_default':['LIN','APD','ECL'] },
+// Industry + Sector → peers. Uses industry first (more specific), falls back to sector.
+const INDUSTRY_PEERS = {
+  // ── AIRLINES ──────────────────────────────────
+  'Airlines': {
+    'SKYW':['ALK','ALGT','HA'], 'DAL':['UAL','AAL','LUV'], 'UAL':['DAL','AAL','LUV'],
+    'AAL':['DAL','UAL','LUV'],  'LUV':['DAL','UAL','ALK'], 'ALK':['LUV','SKYW','ALGT'],
+    'ALGT':['SKYW','ALK','HA'], 'HA':['ALK','SKYW','ALGT'],
+    '_default':['DAL','UAL','ALK']
+  },
+  // ── TECH ──────────────────────────────────────
+  'Consumer Electronics':          { 'AAPL':['MSFT','GOOGL','META'], '_default':['AAPL','MSFT','GOOGL'] },
+  'Software—Infrastructure':       { 'MSFT':['AAPL','GOOGL','ORCL'], 'ORCL':['MSFT','IBM','CRM'], '_default':['MSFT','ORCL','CRM'] },
+  'Software—Application':          { 'CRM':['NOW','WDAY','MSFT'], 'NOW':['CRM','WDAY','MSFT'], 'WDAY':['CRM','NOW','SAP'], '_default':['CRM','NOW','MSFT'] },
+  'Semiconductors':                { 'NVDA':['AMD','INTC','QCOM'], 'AMD':['NVDA','INTC','QCOM'], 'INTC':['AMD','NVDA','QCOM'], 'QCOM':['NVDA','AMD','AVGO'], '_default':['NVDA','AMD','INTC'] },
+  'Internet Content & Information':{ 'GOOGL':['META','MSFT','AMZN'], 'META':['GOOGL','SNAP','PINS'], '_default':['GOOGL','META','NFLX'] },
+  'Electronic Gaming & Multimedia':{ '_default':['ATVI','EA','TTWO'] },
+  'Information Technology Services':{ '_default':['ACN','IBM','INFY'] },
+  // ── HEALTHCARE ────────────────────────────────
+  'Drug Manufacturers—General':    { 'JNJ':['PFE','MRK','ABBV'], 'PFE':['JNJ','MRK','ABBV'], 'MRK':['JNJ','PFE','ABBV'], '_default':['JNJ','PFE','MRK'] },
+  'Biotechnology':                 { '_default':['AMGN','GILD','REGN'] },
+  'Medical Devices':               { '_default':['MDT','ABT','SYK'] },
+  'Health Care Plans':             { 'UNH':['CVS','CI','HUM'], '_default':['UNH','CVS','CI'] },
+  // ── FINANCIALS ────────────────────────────────
+  'Banks—Diversified':             { 'JPM':['BAC','WFC','GS'], 'BAC':['JPM','WFC','C'], 'WFC':['JPM','BAC','C'], '_default':['JPM','BAC','WFC'] },
+  'Banks—Regional':                { '_default':['USB','TFC','RF'] },
+  'Asset Management':              { '_default':['BLK','SCHW','MS'] },
+  'Insurance—Life':                { '_default':['MET','PRU','LNC'] },
+  'Insurance—Property & Casualty': { '_default':['PGR','ALL','TRV'] },
+  // ── CONSUMER ──────────────────────────────────
+  'Internet Retail':               { 'AMZN':['SHOP','EBAY','WMT'], '_default':['AMZN','SHOP','EBAY'] },
+  'Discount Stores':               { 'WMT':['TGT','COST','BJ'], 'TGT':['WMT','COST','DG'], '_default':['WMT','TGT','COST'] },
+  'Restaurants':                   { 'MCD':['SBUX','YUM','DPZ'], 'SBUX':['MCD','YUM','CMG'], '_default':['MCD','SBUX','YUM'] },
+  'Auto Manufacturers':            { 'TSLA':['F','GM','RIVN'], 'F':['GM','TSLA','STLA'], '_default':['TSLA','F','GM'] },
+  'Specialty Retail':              { 'HD':['LOW','TSCO','SHW'], '_default':['HD','LOW','TJX'] },
+  'Beverages—Non-Alcoholic':       { 'KO':['PEP','MNST','CELH'], 'PEP':['KO','MNST','CELH'], '_default':['KO','PEP','MNST'] },
+  'Household & Personal Products': { '_default':['PG','CL','KMB'] },
+  // ── ENERGY ────────────────────────────────────
+  'Oil & Gas Integrated':          { 'XOM':['CVX','COP','BP'], 'CVX':['XOM','COP','SLB'], '_default':['XOM','CVX','COP'] },
+  'Oil & Gas E&P':                 { '_default':['PXD','DVN','EOG'] },
+  'Oil & Gas Midstream':           { '_default':['ET','EPD','KMI'] },
+  // ── INDUSTRIALS ───────────────────────────────
+  'Aerospace & Defense':           { '_default':['LMT','RTX','NOC'] },
+  'Railroads':                     { '_default':['UNP','CSX','NSC'] },
+  'Trucking':                      { '_default':['UPS','FDX','ODFL'] },
+  'Farm & Heavy Construction Machinery':{ '_default':['CAT','DE','AGCO'] },
+  'Industrial Conglomerates':      { '_default':['HON','MMM','GE'] },
+  'Staffing & Employment Services':{ '_default':['MAN','RHI','KELYA'] },
+  // ── COMMUNICATION SERVICES ────────────────────
+  'Telecom Services':              { '_default':['T','VZ','TMUS'] },
+  'Entertainment':                 { 'DIS':['NFLX','WBD','PARA'], 'NFLX':['DIS','WBD','AMZN'], '_default':['DIS','NFLX','WBD'] },
+  'Electronic Gaming & Multimedia':{ '_default':['EA','TTWO','RBLX'] },
+  // ── UTILITIES ─────────────────────────────────
+  'Utilities—Regulated Electric':  { '_default':['NEE','DUK','SO'] },
+  'Utilities—Regulated Gas':       { '_default':['SRE','ATO','NI'] },
+  // ── REAL ESTATE ───────────────────────────────
+  'REIT—Diversified':              { '_default':['VTR','WPC','NNN'] },
+  'REIT—Industrial':               { '_default':['PLD','DRE','EGP'] },
+  'REIT—Retail':                   { '_default':['SPG','O','KIM'] },
+  'REIT—Residential':              { '_default':['AVB','EQR','ESS'] },
+  // ── SECTOR FALLBACKS ──────────────────────────
+  '_sector_Technology':            { '_default':['AAPL','MSFT','GOOGL'] },
+  '_sector_Health Care':           { '_default':['JNJ','PFE','UNH'] },
+  '_sector_Healthcare':            { '_default':['JNJ','PFE','UNH'] },
+  '_sector_Financials':            { '_default':['JPM','BAC','WFC'] },
+  '_sector_Consumer Discretionary':{ '_default':['AMZN','HD','MCD'] },
+  '_sector_Consumer Staples':      { '_default':['PG','KO','PEP'] },
+  '_sector_Energy':                { '_default':['XOM','CVX','COP'] },
+  '_sector_Industrials':           { '_default':['HON','UNP','CAT'] },
+  '_sector_Communication Services':{ '_default':['GOOGL','META','DIS'] },
+  '_sector_Utilities':             { '_default':['NEE','DUK','SO'] },
+  '_sector_Real Estate':           { '_default':['AMT','PLD','SPG'] },
+  '_sector_Materials':             { '_default':['LIN','APD','ECL'] },
 };
 
-function getPeers(ticker, sector) {
-  const map = SECTOR_PEERS[sector] ?? {};
-  const specific = map[ticker];
-  if (specific) return specific.filter(s => s !== ticker).slice(0,3);
-  const def = map['_default'] ?? ['MSFT','AAPL','AMZN'];
-  return def.filter(s => s !== ticker).slice(0,3);
+function getPeers(ticker, sector, industry) {
+  // Try industry map first (most specific)
+  const indMap = INDUSTRY_PEERS[industry] ?? {};
+  if (indMap[ticker]) return indMap[ticker].filter(s => s !== ticker).slice(0,3);
+  if (indMap['_default']) return indMap['_default'].filter(s => s !== ticker).slice(0,3);
+  // Fall back to sector map
+  const secMap = INDUSTRY_PEERS[`_sector_${sector}`] ?? {};
+  if (secMap[ticker]) return secMap[ticker].filter(s => s !== ticker).slice(0,3);
+  if (secMap['_default']) return secMap['_default'].filter(s => s !== ticker).slice(0,3);
+  return ['AAPL','MSFT','AMZN'].filter(s => s !== ticker).slice(0,3);
 }
 
 async function fetchCompany(ticker, onProgress) {
@@ -1022,7 +1084,7 @@ async function fetchCompany(ticker, onProgress) {
   const grossProfit= avNum(inc.grossProfit) ?? (revenue != null && cogs != null ? revenue - cogs : null);
   const opIncome   = avNum(inc.operatingIncome) ?? avNum(inc.ebit);
   const opExpenses = avNum(inc.totalOperatingExpense) ?? avNum(inc.operatingExpenses);
-  const interest   = avNum(inc.interestExpense) ?? avNum(inc.interestAndDebtExpense);
+  const interest   = avNum(inc.interestExpense) ?? avNum(inc.interestAndDebtExpense) ?? avNum(inc.totalInterestExpense) ?? avNum(inc.interestExpenseNet);
 
   // Parse balance sheet
   const totalAssets       = avNum(bs.totalAssets);
@@ -1070,7 +1132,7 @@ async function fetchCompany(ticker, onProgress) {
     logo: `https://logo.clearbit.com/${overview.Name?.toLowerCase().replace(/[^a-z0-9]/g,'')}.com`,
   };
 
-  const peers = getPeers(ticker, overview.Sector ?? '');
+  const peers = getPeers(ticker, overview.Sector ?? '', overview.Industry ?? '');
   return { profile, raw, eps, peRatio, ptb, peers, overview };
 }
 
@@ -1158,14 +1220,21 @@ function metricCard(label, value, sub='') {
 }
 
 function renderCompanyHeader(profile, raw, overview) {
-  const price     = avNum(overview['50DayMovingAverage']); // best available static price from OVERVIEW
   const high52    = avNum(overview['52WeekHigh']);
   const low52     = avNum(overview['52WeekLow']);
-  const chgSign   = '';
-  const logo = `<img src="${profile.logo}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><div class="logo-fallback" style="display:none">${(profile.symbol||'?').slice(0,2)}</div>`;
+  // Generate a deterministic accent color from the ticker string
+  const colors = ['#00e5b4','#0099ff','#a78bfa','#ffb300','#00c97e','#ff6b9d','#38bdf8'];
+  const colorIdx = (profile.symbol || 'A').charCodeAt(0) % colors.length;
+  const avatarColor = colors[colorIdx];
+  const initials = (profile.symbol || '??').slice(0,2);
+
+  // Show letter avatar first, try to load clearbit logo on top
+  const logo = `
+    <div class="logo-fallback" id="logo-avatar" style="background:${avatarColor}22;color:${avatarColor};border:1.5px solid ${avatarColor}44;font-size:1rem;width:100%;height:100%;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;">${initials}</div>
+    <img src="${profile.logo}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:10px;" onerror="this.remove()"/>`;
 
   document.getElementById('company-header').innerHTML = `
-    <div class="company-logo-box">${logo}</div>
+    <div class="company-logo-box" style="position:relative;">${logo}</div>
     <div class="company-name-block">
       <div class="company-ticker">${profile.symbol ?? '—'}</div>
       <div class="company-name">${profile.name ?? '—'}</div>
@@ -1205,9 +1274,35 @@ function renderMetrics(raw) {
   document.getElementById('metrics-grid').innerHTML = cards.map(([l,v,s]) => metricCard(l,v,s)).join('');
 }
 
-// ══════════════════════════════════════════
-//  HEALTH SCORE ENGINE
-// ══════════════════════════════════════════
+// ── INDUSTRY CONTEXT ─────────────────────────────────────────────
+// Returns which industries get relaxed liquidity/leverage thresholds
+// because their business model structurally produces "weak" ratios
+const CAPITAL_INTENSIVE = new Set([
+  'Airlines','Railroads','Trucking','Utilities—Regulated Electric',
+  'Utilities—Regulated Gas','Utilities—Renewable','Utilities—Diversified',
+  'REIT—Diversified','REIT—Industrial','REIT—Retail','REIT—Residential','REIT—Healthcare Facilities',
+  'Oil & Gas Integrated','Oil & Gas E&P','Oil & Gas Midstream','Oil & Gas Refining & Marketing',
+  'Telecom Services','Auto Manufacturers','Farm & Heavy Construction Machinery',
+  'Aerospace & Defense','Engineering & Construction','Steel','Aluminum',
+]);
+
+const NEG_WORKING_CAPITAL_OK = new Set([
+  'Consumer Electronics','Internet Retail','Discount Stores',
+  'Internet Content & Information','Software—Infrastructure','Software—Application',
+]);
+
+function getIndustryFlags(sector, industry) {
+  return {
+    isCapitalIntensive: CAPITAL_INTENSIVE.has(industry),
+    isNegWCOk: NEG_WORKING_CAPITAL_OK.has(industry),
+    isBank: industry?.includes('Bank') || industry?.includes('Financial'),
+    isAirline: industry === 'Airlines',
+    isUtility: sector === 'Utilities',
+    isReit: industry?.includes('REIT'),
+  };
+}
+
+// ── SCORE ENGINE ─────────────────────────────────────────────────
 const SCORE_WEIGHTS = {
   liquidity:     { weight: 0.20, keys: ['currentRatio','quickRatio','cashRatio'] },
   leverage:      { weight: 0.25, keys: ['debtToEquity','debtRatio','interestCoverage'] },
@@ -1224,19 +1319,84 @@ const CAT_META = {
   market:        { label: 'Market Value',  color: '#a78bfa',        dot: '#a78bfa' },
 };
 
-function calcHealthScore(ratios) {
+function calcHealthScore(ratios, raw, sector, industry) {
+  const flags = getIndustryFlags(sector, industry);
+  const { freeCF, opCF, currentLiabilities, totalDebt, revenue, equity } = raw ?? {};
+
+  // ── FCF-based compensating factors ──────────────────────────────
+  // How many years of FCF to pay off current liabilities (lower = better)
+  const fcfToCL  = (freeCF > 0 && currentLiabilities > 0) ? freeCF / currentLiabilities : null;
+  // FCF as % of total debt (higher = better)
+  const fcfToDebt= (freeCF > 0 && totalDebt > 0) ? freeCF / totalDebt : null;
+  // FCF margin
+  const fcfMargin= (freeCF != null && revenue > 0) ? freeCF / revenue : null;
+
+  // ── Raw category scores ──────────────────────────────────────────
   const cats = {};
-  let weightedTotal = 0;
-  let totalWeight = 0;
+  let weightedTotal = 0, totalWeight = 0;
 
   for (const [cat, cfg] of Object.entries(SCORE_WEIGHTS)) {
     const scores = cfg.keys
       .map(k => SUMMARIES[k]?.(ratios[k])?.pct ?? null)
       .filter(v => v !== null);
     if (scores.length === 0) { cats[cat] = null; continue; }
-    const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
-    cats[cat] = Math.round(avg);
-    weightedTotal += avg * cfg.weight;
+    let avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    // ── Context adjustments per category ────────────────────────
+    if (cat === 'liquidity') {
+      // Capital-intensive and airline companies structurally run current ratio < 1 — not a red flag
+      if (flags.isCapitalIntensive || flags.isNegWCOk) {
+        avg = Math.min(100, avg + 18);
+      }
+      // Strong FCF relative to current liabilities is the real liquidity signal
+      // FCF covers >50% of CL in one year → significant boost
+      if (fcfToCL != null) {
+        if      (fcfToCL >= 0.8) avg = Math.min(100, avg + 30);
+        else if (fcfToCL >= 0.5) avg = Math.min(100, avg + 20);
+        else if (fcfToCL >= 0.3) avg = Math.min(100, avg + 12);
+        else if (fcfToCL >= 0.1) avg = Math.min(100, avg +  5);
+      }
+    }
+
+    if (cat === 'leverage') {
+      // Capital-intensive industries (airlines, utilities, REITs) carry structural debt
+      if (flags.isCapitalIntensive) {
+        avg = Math.min(100, avg + 15);
+      }
+      // High FCF/debt means the company can service or retire debt rapidly — big positive signal
+      if (fcfToDebt != null) {
+        if      (fcfToDebt >= 0.8) avg = Math.min(100, avg + 30); // could pay off all debt in ~1yr
+        else if (fcfToDebt >= 0.4) avg = Math.min(100, avg + 20);
+        else if (fcfToDebt >= 0.2) avg = Math.min(100, avg + 12);
+        else if (fcfToDebt >= 0.1) avg = Math.min(100, avg +  5);
+      }
+      // Strong interest coverage alone should push leverage score up
+      if (ratios.interestCoverage >= 8) avg = Math.min(100, avg + 10);
+    }
+
+    if (cat === 'efficiency') {
+      // Capital-intensive and asset-heavy businesses naturally have lower asset turnover
+      if (flags.isCapitalIntensive || flags.isReit || flags.isUtility) {
+        avg = Math.min(100, avg + 10);
+      }
+    }
+
+    if (cat === 'profitability') {
+      // FCF margin is a quality signal — reward high FCF businesses
+      if (fcfMargin != null) {
+        if      (fcfMargin >= 0.25) avg = Math.min(100, avg + 12);
+        else if (fcfMargin >= 0.15) avg = Math.min(100, avg +  8);
+        else if (fcfMargin >= 0.08) avg = Math.min(100, avg +  4);
+      }
+      // Very high ROE driven by leverage (negative equity or tiny equity base) can be misleading
+      // If ROE > 100% AND D/E > 3, cap profitability bonus slightly
+      if (ratios.roe > 1.0 && ratios.debtToEquity > 3) {
+        avg = Math.max(avg - 5, 60); // still great, just tempered
+      }
+    }
+
+    cats[cat] = Math.round(Math.max(0, Math.min(100, avg)));
+    weightedTotal += cats[cat] * cfg.weight;
     totalWeight   += cfg.weight;
   }
 
@@ -1269,7 +1429,17 @@ function calcHealthScore(ratios) {
     verdict='Significant financial distress signals across multiple categories. High risk profile — requires deep due diligence on debt structure, cash runway, and turnaround strategy.';
   }
 
-  return { overall, cats, grade, verdict, scoreColor, scoreBg, scoreBorder, glowColor };
+  // Build a context note to show the user why adjustments were made
+  const notes = [];
+  if (flags.isCapitalIntensive) notes.push(`Industry-adjusted: ${industry} companies structurally carry higher debt & lower liquidity ratios`);
+  if (flags.isNegWCOk)          notes.push(`Negative working capital is normal for this business model`);
+  const fcfToCLcheck = (raw?.freeCF > 0 && raw?.currentLiabilities > 0) ? raw.freeCF / raw.currentLiabilities : null;
+  const fcfToDebtCheck = (raw?.freeCF > 0 && raw?.totalDebt > 0) ? raw.freeCF / raw.totalDebt : null;
+  if (fcfToCLcheck >= 0.3) notes.push(`Strong FCF (${pct(fcfToCLcheck)} of current liabilities/yr) offsets low liquidity ratios`);
+  if (fcfToDebtCheck >= 0.2) notes.push(`FCF covers ${pct(fcfToDebtCheck)} of total debt annually — real leverage risk is low`);
+  const contextNote = notes.length > 0 ? notes.join(' · ') : null;
+
+  return { overall, cats, grade, verdict, scoreColor, scoreBg, scoreBorder, glowColor, flags, contextNote };
 }
 
 function renderHealthScore(score) {
@@ -1326,6 +1496,7 @@ function renderHealthScore(score) {
       <div class="score-right-title">Score Breakdown by Category</div>
       ${catRows}
       <div class="score-note">Weighted: Profitability 30% · Leverage 25% · Liquidity 20% · Efficiency 15% · Market 10%</div>
+      ${score.contextNote ? `<div class="score-note" style="margin-top:0.5rem;color:var(--accent);border-top:1px solid var(--border);padding-top:0.5rem;">⚙ ${score.contextNote}</div>` : ''}
     </div>`;
 }
 
@@ -1432,7 +1603,7 @@ async function runAnalysis() {
     setLoadingText('Rendering results…');
     renderCompanyHeader(data.profile, data.raw, data.overview);
     renderMetrics(data.raw);
-    const healthScore = calcHealthScore(ratios);
+    const healthScore = calcHealthScore(ratios, data.raw, data.profile.sector, data.profile.industry);
     renderHealthScore(healthScore);
     renderRatios(ratios);
     renderPeers(ticker, data, peersData);
